@@ -30,7 +30,7 @@ public class TelaPrincipal extends JFrame {
 
         JLabel lblSistema = new JLabel("ClinicaFácil");
         lblSistema.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblSistema.setForeground(Color.WHITE);
+        lblSistema.setForeground(Color.BLACK);
         header.add(lblSistema, BorderLayout.WEST);
 
         JLabel lblUsuario = new JLabel("Olá, " + usuarioLogado.getNome()
@@ -82,7 +82,7 @@ public class TelaPrincipal extends JFrame {
         JButton btn = new JButton("<html><b>" + titulo + "</b><br><small>" + subtitulo + "</small></html>");
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btn.setBackground(new Color(33, 97, 140));
-        btn.setForeground(Color.WHITE);
+        btn.setForeground(Color.BLACK);
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.addActionListener(e -> acao.run());
