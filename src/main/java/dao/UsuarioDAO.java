@@ -49,9 +49,12 @@ public class UsuarioDAO {
         }
     }
 
-    /** Autentica pelo login e senha (comparação de hash simples SHA-256). */
+    /**
+     * Autentica pelo login e hash SHA-256 da senha.
+     * O hash deve ser gerado pelo chamador via {@code LoginController.sha256(senha)}.
+     */
     public Usuario autenticar(String login, String senhaHash) throws SQLException {
-        String sql = "SELECT * FROM usuarios WHERE login=? AND senha_hash=? AND ativo=1";
+        String sql = "SELECT * FROM usuarios WHERE TRIM(LOWER(login)) = TRIM(LOWER(?)) AND senha_hash = ? AND ativo = 1";
         try (Connection con = ConexaoDB.obterConexao();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, login);

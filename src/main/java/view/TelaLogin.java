@@ -65,7 +65,7 @@ public class TelaLogin extends JFrame {
 
         // Botão
         btnEntrar.setBackground(new Color(33, 97, 140));
-        btnEntrar.setForeground(Color.WHITE);
+        btnEntrar.setForeground(Color.BLACK);
         btnEntrar.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnEntrar.setFocusPainted(false);
         btnEntrar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
