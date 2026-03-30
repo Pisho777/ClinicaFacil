@@ -10,4 +10,5 @@
         <maven.compiler.release>26</maven.compiler.release>
         <exec.mainClass>com.mycompany.clinicafacil1.ClinicaFacil1</exec.mainClass>
     </properties>
+    <name>ClinicaFacil</name>
 </project>
