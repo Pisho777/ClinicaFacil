@@ -8,128 +8,244 @@ import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
 public class TelaPaciente extends JDialog {
 
-    // Formulário
-    private final JTextField txtNome        = new JTextField(30);
-    private final JTextField txtCpf         = new JTextField(15);
-    private final JTextField txtDataNasc    = new JTextField(10);
-    private final JTextField txtTelefone    = new JTextField(15);
-    private final JTextField txtEmail       = new JTextField(25);
-    private final JTextField txtEndereco    = new JTextField(35);
-    private final JTextField txtResponsavel = new JTextField(30);
-    private final JTextField txtBusca       = new JTextField(20);
+    // Campos do formulário
+    private final JTextField txtNome        = DS.campo(0);
+    private final JTextField txtCpf         = DS.campo(0);
+    private final JTextField txtDataNasc    = DS.campo(0);
+    private final JTextField txtTelefone    = DS.campo(0);
+    private final JTextField txtEmail       = DS.campo(0);
+    private final JTextField txtEndereco    = DS.campo(0);
+    private final JTextField txtResponsavel = DS.campo(0);
+    private final JTextField txtBusca       = DS.campo(18);
+
+    // Painel do formulário (pode ser ocultado)
+    private JPanel painelForm;
 
     // Tabela
     private final DefaultTableModel modeloTabela = new DefaultTableModel(
-            new String[]{"ID", "Nome", "CPF", "Nascimento", "Telefone"}, 0) {
+            new String[]{"#", "Nome", "CPF", "Nascimento", "Telefone"}, 0) {
         @Override public boolean isCellEditable(int r, int c) { return false; }
     };
     private final JTable tabela = new JTable(modeloTabela);
 
-    // Estado
     private int idSelecionado = 0;
     private final PacienteController ctrl = new PacienteController();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public TelaPaciente(Frame owner) {
-        super(owner, "Cadastro de Pacientes", true);
+        super(owner, "Pacientes", true);
         construirUI();
         carregarTabela("");
     }
 
     private void construirUI() {
-        setSize(820, 620);
+        setSize(920, 660);
         setLocationRelativeTo(getOwner());
-        setLayout(new BorderLayout(10, 10));
+        setLayout(new BorderLayout());
 
-        add(painelFormulario(), BorderLayout.NORTH);
-        add(painelTabela(),     BorderLayout.CENTER);
-        add(painelBotoes(),     BorderLayout.SOUTH);
+        // Shell: sidebar + main
+        JPanel shell = new JPanel(new BorderLayout());
+        shell.add(criarSidebar(), BorderLayout.WEST);
+        shell.add(criarMain(),    BorderLayout.CENTER);
+        add(shell);
     }
 
-    // ---- Painel Formulário ----
-    private JPanel painelFormulario() {
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBorder(BorderFactory.createTitledBorder("Dados do Paciente"));
+    // ── Sidebar ──────────────────────────────────────────────────
+    private JPanel criarSidebar() {
+        JPanel sb = DS.criarSidebar();
+
+        JPanel brand = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 14));
+        brand.setOpaque(false);
+        brand.setBorder(BorderFactory.createMatteBorder(0,0,1,0,new Color(255,255,255,25)));
+        JLabel ico = new JLabel("CF"); ico.setFont(new Font("Segoe UI",Font.BOLD,14));
+        ico.setForeground(DS.WHITE); ico.setOpaque(true); ico.setBackground(new Color(255,255,255,38));
+        ico.setBorder(DS.emptyBorder(6,10,6,10));
+        JLabel nm = new JLabel("ClinicaFácil"); nm.setFont(new Font("Segoe UI",Font.BOLD,15)); nm.setForeground(DS.WHITE);
+        brand.add(ico); brand.add(nm); sb.add(brand);
+
+        JPanel nav = new JPanel(); nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS)); nav.setOpaque(false);
+        nav.setBorder(DS.emptyBorder(8,8,8,8));
+
+        JButton bHome = DS.navItem("⊞","Dashboard"); bHome.addActionListener(e -> dispose());
+        JButton bPac  = DS.navItem("👥","Pacientes"); DS.setNavAtivo(bPac);
+        JButton bMed  = DS.navItem("🩺","Médicos");
+        JButton bAge  = DS.navItem("📅","Agenda");
+
+        nav.add(bHome); nav.add(bPac); nav.add(bMed); nav.add(bAge);
+        sb.add(nav);
+        sb.add(Box.createVerticalGlue());
+
+        JPanel footer = new JPanel(new BorderLayout()); footer.setOpaque(false);
+        footer.setBorder(BorderFactory.createMatteBorder(1,0,0,0,new Color(255,255,255,25)));
+        JButton btnSair = DS.navItem("🚪","Fechar"); btnSair.addActionListener(e -> dispose());
+        footer.add(btnSair); sb.add(footer);
+
+        return sb;
+    }
+
+    // ── Área principal ───────────────────────────────────────────
+    private JPanel criarMain() {
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(DS.NEUTRAL);
+
+        JPanel topbar = DS.topbar("Pacientes", "Cadastro e gerenciamento");
+        main.add(topbar, BorderLayout.NORTH);
+
+        JPanel content = new JPanel(new BorderLayout(0, 14));
+        content.setBackground(DS.NEUTRAL);
+        content.setBorder(DS.emptyBorder(16, 16, 16, 16));
+
+        // Painel de formulário (oculto por padrão)
+        painelForm = criarPainelFormulario();
+        painelForm.setVisible(false);
+
+        // Toolbar + tabela
+        JPanel corpo = new JPanel(new BorderLayout(0, 10));
+        corpo.setOpaque(false);
+        corpo.add(criarToolbar(), BorderLayout.NORTH);
+        corpo.add(criarPainelTabela(), BorderLayout.CENTER);
+
+        content.add(painelForm, BorderLayout.NORTH);
+        content.add(corpo,      BorderLayout.CENTER);
+        main.add(content, BorderLayout.CENTER);
+
+        return main;
+    }
+
+    // ── Form Panel ───────────────────────────────────────────────
+    private JPanel criarPainelFormulario() {
+        JPanel outer = new JPanel(new BorderLayout(0, 12));
+        outer.setBackground(DS.WHITE);
+        outer.setBorder(BorderFactory.createCompoundBorder(
+            DS.borderCard(), DS.emptyBorder(16, 18, 16, 18)));
+
+        JLabel titulo = new JLabel("Novo Paciente");
+        titulo.setFont(DS.F_HEADING); titulo.setForeground(DS.TEXT);
+        titulo.setBorder(BorderFactory.createMatteBorder(0,0,1,0,DS.BORDER));
+        titulo.setName("titulo_form_pac");
+
+        JPanel grid = new JPanel(new GridBagLayout());
+        grid.setOpaque(false);
         GridBagConstraints g = new GridBagConstraints();
-        g.insets = new Insets(4, 6, 4, 6);
-        g.anchor = GridBagConstraints.WEST;
+        g.fill = GridBagConstraints.HORIZONTAL; g.insets = new Insets(6, 6, 6, 6);
 
-        adicionarCampo(p, g, "Nome *:",       txtNome,        0, 0, 3);
-        adicionarCampo(p, g, "CPF *:",        txtCpf,         0, 1, 1);
-        adicionarCampo(p, g, "Nascimento *:", txtDataNasc,    2, 1, 1);
-        adicionarCampo(p, g, "Telefone:",     txtTelefone,    0, 2, 1);
-        adicionarCampo(p, g, "E-mail:",       txtEmail,       2, 2, 1);
-        adicionarCampo(p, g, "Endereço:",     txtEndereco,    0, 3, 3);
-        adicionarCampo(p, g, "Responsável:",  txtResponsavel, 0, 4, 3);
+        // Nome — largura total
+        g.gridy=0; g.gridx=0; g.gridwidth=1; grid.add(DS.labelCampo("Nome completo *"), g);
+        g.gridx=1; g.gridwidth=5; grid.add(txtNome, g); g.gridwidth=1;
 
+        // CPF e Nascimento
+        g.gridy=1; g.gridx=0; grid.add(DS.labelCampo("CPF *"), g);
+        g.gridx=1; grid.add(txtCpf, g);
+        g.gridx=2; grid.add(DS.labelCampo("Nascimento *"), g);
+        g.gridx=3; grid.add(txtDataNasc, g);
+
+        // Telefone e E-mail
+        g.gridy=2; g.gridx=0; grid.add(DS.labelCampo("Telefone"), g);
+        g.gridx=1; grid.add(txtTelefone, g);
+        g.gridx=2; grid.add(DS.labelCampo("E-mail"), g);
+        g.gridx=3; grid.add(txtEmail, g);
+
+        // Endereço — largura total
+        g.gridy=3; g.gridx=0; g.gridwidth=1; grid.add(DS.labelCampo("Endereço"), g);
+        g.gridx=1; g.gridwidth=5; grid.add(txtEndereco, g); g.gridwidth=1;
+
+        // Responsável — largura total
+        g.gridy=4; g.gridx=0; g.gridwidth=1; grid.add(DS.labelCampo("Responsável"), g);
+        g.gridx=1; g.gridwidth=5; grid.add(txtResponsavel, g); g.gridwidth=1;
+
+        // Hint responsável
+        JLabel hint = new JLabel("⚠  Obrigatório para pacientes menores de 18 anos");
+        hint.setFont(DS.F_SMALL); hint.setForeground(DS.WARN);
+        g.gridy=5; g.gridx=1; g.gridwidth=5; grid.add(hint, g);
+
+        // Ações
+        JPanel acoes = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acoes.setOpaque(false);
+        JButton btnCancelar = DS.btnOutline("Cancelar");
+        JButton btnSalvar   = DS.btnBrand("Salvar paciente");
+        btnCancelar.addActionListener(e -> { painelForm.setVisible(false); limparFormulario(); });
+        btnSalvar.addActionListener(e -> salvar());
+        acoes.add(btnCancelar); acoes.add(btnSalvar);
+
+        outer.add(titulo, BorderLayout.NORTH);
+        outer.add(grid,   BorderLayout.CENTER);
+        outer.add(acoes,  BorderLayout.SOUTH);
+        return outer;
+    }
+
+    // ── Toolbar ─────────────────────────────────────────────────
+    private JPanel criarToolbar() {
+        JPanel p = new JPanel(new BorderLayout(8, 0));
+        p.setOpaque(false);
+
+        JPanel esq = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        esq.setOpaque(false);
+        txtBusca.putClientProperty("JTextField.placeholderText", "Buscar por nome ou CPF...");
+        JButton btnBuscar = DS.btnOutline("Filtrar");
+        JButton btnTodos  = DS.btnOutline("Todos");
+        btnBuscar.addActionListener(e -> carregarTabela(txtBusca.getText()));
+        btnTodos.addActionListener(e -> { txtBusca.setText(""); carregarTabela(""); });
+        esq.add(txtBusca); esq.add(btnBuscar); esq.add(btnTodos);
+
+        JButton btnNovo = DS.btnBrand("+ Novo Paciente");
+        btnNovo.addActionListener(e -> {
+            limparFormulario();
+            setTituloForm("Novo Paciente");
+            painelForm.setVisible(true);
+        });
+
+        p.add(esq,    BorderLayout.WEST);
+        p.add(btnNovo, BorderLayout.EAST);
         return p;
     }
 
-    private void adicionarCampo(JPanel p, GridBagConstraints g,
-                                 String label, JTextField campo,
-                                 int col, int row, int span) {
-        g.gridx = col; g.gridy = row; g.gridwidth = 1;
-        p.add(new JLabel(label), g);
-        g.gridx = col + 1; g.gridwidth = span;
-        g.fill = GridBagConstraints.HORIZONTAL;
-        p.add(campo, g);
-        g.fill = GridBagConstraints.NONE;
-    }
-
-    // ---- Painel Tabela ----
-    private JPanel painelTabela() {
-        JPanel p = new JPanel(new BorderLayout(5, 5));
-        p.setBorder(BorderFactory.createTitledBorder("Lista de Pacientes"));
-
-        JPanel buscaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        buscaPanel.add(new JLabel("Buscar por nome:"));
-        buscaPanel.add(txtBusca);
-        JButton btnBuscar = new JButton("Buscar");
-        btnBuscar.addActionListener(e -> carregarTabela(txtBusca.getText()));
-        buscaPanel.add(btnBuscar);
-
-        tabela.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tabela.setRowHeight(22);
+    // ── Tabela ───────────────────────────────────────────────────
+    private JPanel criarPainelTabela() {
+        DS.estilizarTabela(tabela);
         tabela.getColumnModel().getColumn(0).setMaxWidth(50);
+        tabela.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabela.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) preencherFormulario();
         });
 
-        p.add(buscaPanel, BorderLayout.NORTH);
-        p.add(new JScrollPane(tabela), BorderLayout.CENTER);
-        return p;
+        // Renderer para colorir linha selecionada
+        tabela.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+                Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+                setBorder(DS.emptyBorder(0, 12, 0, 12));
+                if (sel) { comp.setBackground(DS.BRAND_LIGHT); comp.setForeground(DS.TEXT); }
+                else     { comp.setBackground(r % 2 == 0 ? DS.WHITE : DS.NEUTRAL); comp.setForeground(DS.TEXT); }
+                return comp;
+            }
+        });
+
+        // Coluna de ações
+        JScrollPane scroll = new JScrollPane(tabela);
+        scroll.setBorder(DS.borderCard());
+        scroll.getViewport().setBackground(DS.WHITE);
+
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setOpaque(false);
+        wrap.add(scroll, BorderLayout.CENTER);
+
+        // Rodapé contador
+        JLabel contador = DS.labelMuted("— pacientes carregados");
+        contador.setName("contador_pac");
+        contador.setBorder(DS.emptyBorder(6, 0, 0, 0));
+        wrap.add(contador, BorderLayout.SOUTH);
+
+        return wrap;
     }
 
-    // ---- Painel Botões ----
-    private JPanel painelBotoes() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
-
-        JButton btnNovo    = new JButton("Novo");
-        JButton btnSalvar  = new JButton("Salvar");
-        JButton btnExcluir = new JButton("Excluir");
-        JButton btnFechar  = new JButton("Fechar");
-
-        btnSalvar.setBackground(new Color(33, 97, 140));
-        btnSalvar.setForeground(Color.WHITE);
-        btnExcluir.setBackground(new Color(180, 50, 40));
-        btnExcluir.setForeground(Color.WHITE);
-
-        btnNovo.addActionListener(e -> limparFormulario());
-        btnSalvar.addActionListener(e -> salvar());
-        btnExcluir.addActionListener(e -> excluir());
-        btnFechar.addActionListener(e -> dispose());
-
-        p.add(btnNovo); p.add(btnSalvar); p.add(btnExcluir); p.add(btnFechar);
-        return p;
-    }
-
-    // ---- Lógica ----
+    // ── Lógica ──────────────────────────────────────────────────
     private void salvar() {
         Paciente pac = new Paciente();
         pac.setId(idSelecionado);
@@ -148,17 +264,19 @@ public class TelaPaciente extends JDialog {
         }
 
         if (ctrl.salvar(pac, this)) {
+            painelForm.setVisible(false);
             limparFormulario();
             carregarTabela("");
         }
     }
 
-    private void excluir() {
+    private void excluirSelecionado() {
         if (idSelecionado == 0) {
             JOptionPane.showMessageDialog(this, "Selecione um paciente na tabela.", "Atenção", JOptionPane.WARNING_MESSAGE);
             return;
         }
         if (ctrl.excluir(idSelecionado, this)) {
+            painelForm.setVisible(false);
             limparFormulario();
             carregarTabela("");
         }
@@ -170,13 +288,18 @@ public class TelaPaciente extends JDialog {
                 ? ctrl.listarTodos(this)
                 : ctrl.buscarPorNome(filtro, this);
         for (Paciente p : lista) {
+            String nasc = p.getDataNasc() != null ? p.getDataNasc().format(FMT) : "";
+            int idade = p.getDataNasc() != null ? Period.between(p.getDataNasc(), LocalDate.now()).getYears() : -1;
+            String nascExib = idade >= 0 ? nasc + " (" + idade + " anos)" : nasc;
+            if (idade >= 0 && idade < 18) nascExib += " ⚠";
             modeloTabela.addRow(new Object[]{
-                p.getId(),
-                p.getNome(),
-                ValidadorCPF.formatar(p.getCpf()),
-                p.getDataNasc() != null ? p.getDataNasc().format(FMT) : "",
-                p.getTelefone()
+                p.getId(), p.getNome(), ValidadorCPF.formatar(p.getCpf()), nascExib, p.getTelefone()
             });
+        }
+        // Atualiza contador
+        for (Component c : ((JPanel) ((JScrollPane) tabela.getParent().getParent()).getParent()).getComponents()) {
+            if (c instanceof JLabel l && "contador_pac".equals(l.getName()))
+                l.setText(lista.size() + " paciente(s) encontrado(s)");
         }
     }
 
@@ -186,16 +309,25 @@ public class TelaPaciente extends JDialog {
         idSelecionado = (int) modeloTabela.getValueAt(linha, 0);
         txtNome.setText((String) modeloTabela.getValueAt(linha, 1));
         txtCpf.setText((String) modeloTabela.getValueAt(linha, 2));
-        txtDataNasc.setText((String) modeloTabela.getValueAt(linha, 3));
+        // Extrai só a data (dd/MM/yyyy) sem a parte " (X anos)"
+        String nascRaw = (String) modeloTabela.getValueAt(linha, 3);
+        txtDataNasc.setText(nascRaw.length() >= 10 ? nascRaw.substring(0, 10) : nascRaw);
         txtTelefone.setText((String) modeloTabela.getValueAt(linha, 4));
+        setTituloForm("Editar Paciente");
+        painelForm.setVisible(true);
     }
 
     private void limparFormulario() {
         idSelecionado = 0;
-        for (JTextField f : new JTextField[]{txtNome, txtCpf, txtDataNasc, txtTelefone,
-                                              txtEmail, txtEndereco, txtResponsavel}) {
-            f.setText("");
-        }
+        for (JTextField f : new JTextField[]{txtNome, txtCpf, txtDataNasc,
+                txtTelefone, txtEmail, txtEndereco, txtResponsavel}) f.setText("");
         tabela.clearSelection();
+    }
+
+    private void setTituloForm(String texto) {
+        for (Component c : painelForm.getComponents()) {
+            if (c instanceof JLabel l && "titulo_form_pac".equals(l.getName()))
+                l.setText(texto);
+        }
     }
 }
