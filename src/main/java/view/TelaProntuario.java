@@ -29,6 +29,14 @@ public class TelaProntuario extends JDialog {
         construirUI();
     }
 
+    public TelaProntuario(Frame owner, Consulta consulta, AgendaController ctrl) {
+        super(owner, "Prontuário", true);
+        this.consulta = consulta;
+        this.ctrl     = ctrl;
+        carregarProntuario();
+        construirUI();
+    }
+
     private void carregarProntuario() {
         prontuario = ctrl.buscarProntuario(consulta.getId(), this);
     }

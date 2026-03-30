@@ -155,36 +155,59 @@ public final class DS {
         return p;
     }
 
-    /** Item de navegação da sidebar
-     * @param icone
-     * @param texto */
+    /** Item de navegação da sidebar */
     public static JButton navItem(String icone, String texto) {
         JButton b = new JButton(icone + "  " + texto);
-        b.setFont(F_BODY); b.setFocusPainted(false); b.setBorderPainted(false);
-        b.setBackground(BRAND); b.setForeground(new Color(255, 255, 255, 204));
+        b.setFont(F_BODY);
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setOpaque(true);
+        b.setContentAreaFilled(true);
+        b.setBackground(BRAND);
+        b.setForeground(new Color(255, 255, 255, 204));
         b.setHorizontalAlignment(SwingConstants.LEFT);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setBorder(emptyBorder(9, 12, 9, 12));
         b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        b.putClientProperty("ativo", false);   // estado inicial
+
         b.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
-                if (!b.getBackground().equals(new Color(255,255,255,46)))
-                    b.setBackground(new Color(255, 255, 255, 25));
+                if (Boolean.FALSE.equals(b.getClientProperty("ativo"))) {
+                    b.setBackground(new Color(0x1E6090)); // BRAND levemente mais claro
+                    b.setForeground(Color.WHITE);
+                }
             }
             @Override
             public void mouseExited(java.awt.event.MouseEvent e) {
-                if (!b.getBackground().equals(new Color(255,255,255,46)))
+                if (Boolean.FALSE.equals(b.getClientProperty("ativo"))) {
                     b.setBackground(BRAND);
+                    b.setForeground(new Color(255, 255, 255, 204));
+                }
             }
         });
         return b;
     }
 
-    public static void setNavAtivo(JButton b) {
-        b.setBackground(new Color(255, 255, 255, 46));
-        b.setForeground(WHITE);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 13));
+    /**
+     * Marca ativoBtn como ativo e reseta todos os demais botões passados.
+     *
+     * @param ativoBtn botão que deve ficar destacado
+     * @param todos    todos os botões da sidebar (inclusive o ativo)
+     */
+    public static void setNavAtivo(JButton ativoBtn, JButton... todos) {
+        for (JButton b : todos) {
+            if (b == null) continue;
+            b.putClientProperty("ativo", false);
+            b.setBackground(BRAND);
+            b.setForeground(new Color(255, 255, 255, 204));
+            b.setFont(F_BODY);
+        }
+        ativoBtn.putClientProperty("ativo", true);
+        ativoBtn.setBackground(new Color(0x154360)); // tom escuro = ativo
+        ativoBtn.setForeground(Color.WHITE);
+        ativoBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
     }
 
     // ── Card ─────────────────────────────────────────────────────

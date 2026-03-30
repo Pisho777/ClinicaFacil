@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
-public class TelaAgenda extends JDialog {
+public class TelaAgenda extends JPanel {
 
     // Formulário novo agendamento
     private final JComboBox<Paciente> cmbPaciente = new JComboBox<>();
@@ -41,8 +41,7 @@ public class TelaAgenda extends JDialog {
     private static final DateTimeFormatter FMT_DT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter FMT_D  = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    public TelaAgenda(Frame owner) {
-        super(owner, "Agenda", true);
+    public TelaAgenda() {
         carregarCombos();
         construirUI();
         carregarTodasConsultas();
@@ -54,44 +53,8 @@ public class TelaAgenda extends JDialog {
     }
 
     private void construirUI() {
-        setSize(980, 680);
-        setLocationRelativeTo(getOwner());
-        setLayout(new BorderLayout());
-
-        JPanel shell = new JPanel(new BorderLayout());
-        shell.add(criarSidebar(), BorderLayout.WEST);
-        shell.add(criarMain(),    BorderLayout.CENTER);
-        add(shell);
-    }
-
-    private JPanel criarSidebar() {
-        JPanel sb = DS.criarSidebar();
-
-        JPanel brand = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 14));
-        brand.setOpaque(false);
-        brand.setBorder(BorderFactory.createMatteBorder(0,0,1,0,new Color(255,255,255,25)));
-        JLabel ico = new JLabel("CF"); ico.setFont(new Font("Segoe UI",Font.BOLD,14));
-        ico.setForeground(DS.WHITE); ico.setOpaque(true); ico.setBackground(new Color(255,255,255,38));
-        ico.setBorder(DS.emptyBorder(6,10,6,10));
-        JLabel nm = new JLabel("ClinicaFácil"); nm.setFont(new Font("Segoe UI",Font.BOLD,15)); nm.setForeground(DS.WHITE);
-        brand.add(ico); brand.add(nm); sb.add(brand);
-
-        JPanel nav = new JPanel(); nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS)); nav.setOpaque(false);
-        nav.setBorder(DS.emptyBorder(8,8,8,8));
-
-        JButton bHome = DS.navItem("⊞","Dashboard"); bHome.addActionListener(e -> dispose());
-        JButton bPac  = DS.navItem("👥","Pacientes");
-        JButton bMed  = DS.navItem("🩺","Médicos");
-        JButton bAge  = DS.navItem("📅","Agenda"); DS.setNavAtivo(bAge);
-
-        nav.add(bHome); nav.add(bPac); nav.add(bMed); nav.add(bAge);
-        sb.add(nav); sb.add(Box.createVerticalGlue());
-
-        JPanel footer = new JPanel(new BorderLayout()); footer.setOpaque(false);
-        footer.setBorder(BorderFactory.createMatteBorder(1,0,0,0,new Color(255,255,255,25)));
-        JButton btnSair = DS.navItem("🚪","Fechar"); btnSair.addActionListener(e -> dispose());
-        footer.add(btnSair); sb.add(footer);
-        return sb;
+        this.setLayout(new BorderLayout());
+        this.add(criarMain(), BorderLayout.CENTER);
     }
 
     private JPanel criarMain() {
@@ -273,7 +236,8 @@ public class TelaAgenda extends JDialog {
         Paciente pac = new Paciente(); pac.setNome((String) modeloTabela.getValueAt(row, 2));
         Medico med = new Medico();   med.setNome((String) modeloTabela.getValueAt(row, 3));
         c.setPaciente(pac); c.setMedico(med);
-        new TelaProntuario(this, c, agendaCtrl).setVisible(true);
+        Frame frame = (Frame) SwingUtilities.getWindowAncestor(this);
+        new TelaProntuario(frame, c, agendaCtrl).setVisible(true);
         carregarTodasConsultas();
     }
 

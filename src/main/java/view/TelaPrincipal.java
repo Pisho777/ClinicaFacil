@@ -12,8 +12,8 @@ import java.time.format.TextStyle;
 import java.util.Locale;
 
 /**
- * Tela Principal — layout com sidebar fixa e dashboard central.
- * Design: sidebar brand (220px) + topbar + área de conteúdo neutral.
+ * Tela Principal — layout com sidebar fixa e CardLayout central.
+ * Cada painel de conteúdo é instanciado uma vez e registrado no CardLayout.
  */
 public class TelaPrincipal extends JFrame {
 
@@ -21,6 +21,15 @@ public class TelaPrincipal extends JFrame {
 
     // Botões da sidebar (guardados para marcar ativo)
     private JButton navHome, navPac, navMed, navAge, navPron, navUsr;
+
+    // CardLayout e painel de conteúdo
+    private CardLayout cardLayout;
+    private JPanel contentPanel;
+
+    // Painéis de conteúdo (instanciados uma vez)
+    private TelaPaciente painelPacientes;
+    private TelaMedico   painelMedicos;
+    private TelaAgenda   painelAgenda;
 
     public TelaPrincipal(Usuario usuario) {
         super("ClinicaFácil");
@@ -36,8 +45,8 @@ public class TelaPrincipal extends JFrame {
         setLayout(new BorderLayout());
 
         JPanel shell = new JPanel(new BorderLayout());
-        shell.add(criarSidebar(), BorderLayout.WEST);
-        shell.add(criarMain(),    BorderLayout.CENTER);
+        shell.add(criarSidebar(),  BorderLayout.WEST);
+        shell.add(criarMain(),     BorderLayout.CENTER);
         add(shell);
     }
 
@@ -103,18 +112,17 @@ public class TelaPrincipal extends JFrame {
         navMed  = DS.navItem("🩺", "Médicos");
         navAge  = DS.navItem("📅", "Agenda");
 
-        DS.setNavAtivo(navHome);
-
-        navPac.addActionListener(e -> { ativarNav(navPac); new TelaPaciente(this).setVisible(true); });
-        navMed.addActionListener(e -> { ativarNav(navMed); new TelaMedico(this).setVisible(true); });
-        navAge.addActionListener(e -> { ativarNav(navAge); new TelaAgenda(this).setVisible(true); });
+        navHome.addActionListener(e -> navegarPara("dashboard"));
+        navPac.addActionListener(e  -> navegarPara("pacientes"));
+        navMed.addActionListener(e  -> navegarPara("medicos"));
+        navAge.addActionListener(e  -> navegarPara("agenda"));
 
         nav.add(navHome); nav.add(navPac); nav.add(navMed); nav.add(navAge);
 
         nav.add(secaoNav("Clínica"));
 
         navPron = DS.navItem("📋", "Prontuários");
-        navPron.addActionListener(e -> { ativarNav(navAge); new TelaAgenda(this).setVisible(true); });
+        navPron.addActionListener(e -> navegarPara("agenda"));
         if (usuarioLogado.getPerfil() == PerfilUsuario.RECEPCAO) {
             navPron.setEnabled(false);
             navPron.setToolTipText("Acesso restrito a médicos e administradores");
@@ -155,14 +163,21 @@ public class TelaPrincipal extends JFrame {
         return l;
     }
 
-    private void ativarNav(JButton ativo) {
-        for (JButton b : new JButton[]{navHome, navPac, navMed, navAge, navPron, navUsr}) {
-            if (b == null) continue;
-            b.setBackground(DS.BRAND);
-            b.setForeground(new Color(255,255,255,204));
-            b.setFont(DS.F_BODY);
-        }
-        DS.setNavAtivo(ativo);
+    /**
+     * Navega para o card especificado e atualiza o botão ativo da sidebar.
+     *
+     * @param card nome do card: "dashboard", "pacientes", "medicos", "agenda"
+     */
+    private void navegarPara(String card) {
+        cardLayout.show(contentPanel, card);
+
+        JButton btnAtivo = switch (card) {
+            case "pacientes" -> navPac;
+            case "medicos"   -> navMed;
+            case "agenda"    -> navAge;
+            default          -> navHome;
+        };
+        DS.setNavAtivo(btnAtivo, navHome, navPac, navMed, navAge, navPron, navUsr);
     }
 
     // ── Área principal ───────────────────────────────────────────
@@ -170,7 +185,7 @@ public class TelaPrincipal extends JFrame {
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(DS.NEUTRAL);
 
-        // Topbar
+        // Topbar do dashboard (visível apenas no card dashboard; os outros têm seu próprio topbar)
         String hoje = LocalDate.now().getDayOfWeek()
                 .getDisplayName(TextStyle.FULL, new Locale("pt","BR"))
                 + ", " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", new Locale("pt","BR")));
@@ -182,8 +197,32 @@ public class TelaPrincipal extends JFrame {
         topRight.add(iconeBtn("🔔")); topRight.add(iconeBtn("⚙"));
         topbar.add(topRight, BorderLayout.EAST);
 
-        main.add(topbar, BorderLayout.NORTH);
-        main.add(criarDashboard(), BorderLayout.CENTER);
+        // CardLayout
+        cardLayout   = new CardLayout();
+        contentPanel = new JPanel(cardLayout);
+        contentPanel.setBackground(DS.NEUTRAL);
+
+        // Dashboard (envolve topbar + conteúdo num único painel)
+        JPanel dashWrapper = new JPanel(new BorderLayout());
+        dashWrapper.setBackground(DS.NEUTRAL);
+        dashWrapper.add(topbar,          BorderLayout.NORTH);
+        dashWrapper.add(criarDashboard(), BorderLayout.CENTER);
+
+        // Instanciar painéis uma única vez
+        painelPacientes = new TelaPaciente();
+        painelMedicos   = new TelaMedico();
+        painelAgenda    = new TelaAgenda();
+
+        contentPanel.add(dashWrapper,    "dashboard");
+        contentPanel.add(painelPacientes, "pacientes");
+        contentPanel.add(painelMedicos,   "medicos");
+        contentPanel.add(painelAgenda,    "agenda");
+
+        // Inicia no dashboard com navHome ativo
+        DS.setNavAtivo(navHome, navHome, navPac, navMed, navAge, navPron, navUsr);
+        cardLayout.show(contentPanel, "dashboard");
+
+        main.add(contentPanel, BorderLayout.CENTER);
         return main;
     }
 
@@ -253,7 +292,7 @@ public class TelaPrincipal extends JFrame {
         link.setFont(DS.F_SMALL); link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         link.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                ativarNav(navAge); new TelaAgenda(TelaPrincipal.this).setVisible(true);
+                navegarPara("agenda");
             }
         });
         titulo.add(t, BorderLayout.WEST); titulo.add(link, BorderLayout.EAST);
@@ -317,10 +356,10 @@ public class TelaPrincipal extends JFrame {
         JPanel grid = new JPanel(new GridLayout(2, 2, 8, 8));
         grid.setOpaque(false);
 
-        grid.add(quickBtn("📅", "Nova consulta",  "Agendar agora",   () -> { ativarNav(navAge); new TelaAgenda(this).setVisible(true); }));
-        grid.add(quickBtn("👤", "Novo paciente",  "Cadastrar",       () -> { ativarNav(navPac); new TelaPaciente(this).setVisible(true); }));
-        grid.add(quickBtn("🩺", "Médicos",        "Gerenciar",       () -> { ativarNav(navMed); new TelaMedico(this).setVisible(true); }));
-        grid.add(quickBtn("🔍", "Buscar",         "Localizar paciente", () -> { ativarNav(navPac); new TelaPaciente(this).setVisible(true); }));
+        grid.add(quickBtn("📅", "Nova consulta",     "Agendar agora",      () -> navegarPara("agenda")));
+        grid.add(quickBtn("👤", "Novo paciente",     "Cadastrar",          () -> navegarPara("pacientes")));
+        grid.add(quickBtn("🩺", "Médicos",           "Gerenciar",          () -> navegarPara("medicos")));
+        grid.add(quickBtn("🔍", "Buscar",            "Localizar paciente", () -> navegarPara("pacientes")));
 
         c.add(t, BorderLayout.NORTH); c.add(grid, BorderLayout.CENTER);
         return c;
