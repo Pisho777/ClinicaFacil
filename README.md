@@ -51,7 +51,7 @@ As tecnologias utilizadas no projeto foram baseadas no conteúdo do curso:
 * Edição de dados
 * Exclusão de registros
 * Busca por nome
-* Validação de CPF
+* Validação de CPF (para testes é necessario um CPF valido use um gerador para obtenção e validação)
 * Identificação de menor de idade com responsável obrigatório
 
 ---
@@ -168,6 +168,7 @@ git clone <URL_DO_REPOSITORIO>
 
   * Melhor tratamento de erros
   * Interface mais responsiva
+  * Hash 100% funcional
   * Implementação de relatórios
 
 ---
